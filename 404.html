@@ -1,144 +1,151 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html>
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>URL Shortener</title>
+    <title>URL短網址服務</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            background-color: #f5f7fa;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+            background-color: #f7f9fc;
             color: #333;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            text-align: center;
         }
         .container {
             max-width: 600px;
-            padding: 2rem;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        }
-        .loading {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid rgba(0, 123, 255, 0.2);
-            border-radius: 50%;
-            border-top-color: #007bff;
-            animation: spin 1s ease-in-out infinite;
-            margin-bottom: 1.5rem;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+            margin: 40px auto;
+            padding: 30px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         h1 {
-            margin-bottom: 1rem;
             color: #2c3e50;
+            text-align: center;
+            margin-bottom: 20px;
         }
-        p {
-            margin-bottom: 1rem;
-            font-size: 1.1rem;
-            color: #7f8c8d;
+        #loading {
+            text-align: center;
+            display: none;
         }
-        .message {
-            font-size: 1.2rem;
+        #error {
             color: #e74c3c;
-            margin-top: 1rem;
-            padding: 0.5rem;
-            border-radius: 4px;
-            background-color: #fff5f5;
+            text-align: center;
             display: none;
-        }
-        .return-home {
-            display: none;
-            margin-top: 1.5rem;
-            padding: 0.5rem 1rem;
-            background-color: #3498db;
-            color: white;
-            text-decoration: none;
+            padding: 15px;
+            background: #fadbd8;
             border-radius: 4px;
-            transition: background-color 0.3s;
+            margin-top: 20px;
         }
-        .return-home:hover {
-            background-color: #2980b9;
+        #success {
+            color: #27ae60;
+            text-align: center;
+            display: none;
+            padding: 15px;
+            background: #d5f5e3;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="loading" id="loadingContent">
-            <div class="spinner"></div>
-            <h1>正在重定向</h1>
-            <p>請稍候，我們正在將您帶到目標網址...</p>
+        <h1>URL短網址服務</h1>
+        <h3 style="align-items: center; text-align: center;">By Eric</h3>
+        <div id="loading">
+            <div class="loader"></div>
+            <p>重定向中，請稍候...</p>
         </div>
-        <div class="message" id="errorMessage"></div>
-        <a href="/" class="return-home" id="returnHomeLink">返回首頁</a>
+        <div id="error">找不到對應的短網址...</div>
+        <div id="success">找到URL！正在重定向...</div>
     </div>
 
     <script>
-        async function handleRedirect() {
-            const loadingContent = document.getElementById('loadingContent');
-            const errorMessage = document.getElementById('errorMessage');
-            const returnHomeLink = document.getElementById('returnHomeLink');
+        // 函數用於從URL獲取路徑
+        function getPathFromUrl(url) {
+            return url.split('/').pop();
+        }
+
+        // 函數用於解析URL參數
+        function getParameterByName(name, url = window.location.href) {
+            name = name.replace(/[\[\]]/g, '\\$&');
+            var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
+                results = regex.exec(url);
+            if (!results) return null;
+            if (!results[2]) return '';
+            return decodeURIComponent(results[2].replace(/\+/g, ' '));
+        }
+
+        // 當頁面加載時執行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 顯示加載信息
+            document.getElementById('loading').style.display = 'block';
             
-            const shortCode = window.location.pathname.slice(1);
+            // 獲取短代碼（從URL路徑）
+            var shortCode = getPathFromUrl(window.location.pathname);
+            
+            // 如果沒有短代碼，則在URL參數中查找
+            if (!shortCode || shortCode === '404.html') {
+                shortCode = getParameterByName('code');
+            }
+            
+            // 如果仍然沒有短代碼，顯示錯誤
             if (!shortCode) {
-                // 如果沒有短碼，可能是在首頁
-                errorMessage.style.display = 'block';
-                errorMessage.textContent = '歡迎使用URL縮短服務';
-                loadingContent.style.display = 'none';
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                setTimeout(function() {
+                    window.location.href = '/';
+                }, 3000);
                 return;
             }
             
-            const apiUrl = 'https://script.google.com/macros/s/AKfycbyRU4slK8KADpGQw8Q77DB2KbwzsF_R_b-ZYE53ZZs3gDDi8ID3n3jpOZIIs5yJ_9sMXA/exec?code=' + encodeURIComponent(shortCode);
+            // 使用Google Apps Script Web應用查詢短網址
+            // 請替換以下URL為您的Google Apps Script Web應用發布URL
+            var scriptURL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
             
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超時
-                
-                const response = await fetch(apiUrl, { signal: controller.signal });
-                clearTimeout(timeoutId);
-                
-                const result = await response.json();
-                
-                if (result.status === 'success') {
-                    window.location.href = result.message;
-                } else {
-                    showError('找不到此URL，請檢查短碼是否正確。');
-                }
-            } catch (error) {
-                if (error.name === 'AbortError') {
-                    showError('請求超時，請檢查您的網絡連接並重試。');
-                } else {
-                    showError('重定向時發生錯誤，請稍後再試。');
-                    console.error('Redirect error:', error);
-                }
-            }
-            
-            function showError(message) {
-                loadingContent.style.display = 'none';
-                errorMessage.style.display = 'block';
-                errorMessage.textContent = message;
-                returnHomeLink.style.display = 'inline-block';
-            }
-        }
-        
-        // 頁面載入完成時執行重定向
-        window.onload = handleRedirect;
+            fetch(`${scriptURL}?code=${encodeURIComponent(shortCode)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        document.getElementById('loading').style.display = 'none';
+                        document.getElementById('success').style.display = 'block';
+                        // 重定向到目標URL
+                        setTimeout(function() {
+                            window.location.href = data.message;
+                        }, 1000);
+                    } else {
+                        document.getElementById('loading').style.display = 'none';
+                        document.getElementById('error').style.display = 'block';
+                        setTimeout(function() {
+                            window.location.href = '/';
+                        }, 3000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('error').style.display = 'block';
+                    document.getElementById('error').textContent = '加載數據時出錯。正在返回主頁...';
+                    setTimeout(function() {
+                        window.location.href = '/';
+                    }, 3000);
+                });
+        });
     </script>
 </body>
 </html>
